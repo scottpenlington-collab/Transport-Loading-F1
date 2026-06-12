@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staircraft - Vehicle Loading Board</title>
+<style>
+  :root {
+    --bay-green: #EAF3DE; --bay-green-text: #3B6D11; --bay-green-border: #639922;
+    --bay-amber: #FAEEDA; --bay-amber-text: #854F0B; --bay-amber-border: #BA7517;
+    --bay-blue:  #E6F1FB; --bay-blue-text:  #0C447C; --bay-blue-border:  #378ADD;
+    --bay-gray:  #F1EFE8; --bay-gray-text:  #444441; --bay-gray-border:  #888780;
+    --bay-red:   #FCEBEB; --bay-red-text:   #791F1F; --bay-red-border:   #E24B4A;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: #f5f4f0; color: #1a1a18; min-height: 100vh; }
+
+  header {
+    background: #1a1a18;
+    color: #fff;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  header .brand { font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #d4c9a8; }
+  header .title { font-size: 15px; font-weight: 500; }
+  header .meta { font-size: 12px; color: #888; display: flex; align-items: center; gap: 16px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #639922; display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .controls {
+    background: #fff;
+    border-bottom: 1px solid #e0ddd4;
+    padding: 0 24px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .tab-btn {
+    height: 48px;
+    padding: 0 20px;
+    border: none;
+    background: none;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    color: #888;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn.active { color: #1a1a18; border-bottom-color: #1a1a18; }
+  .tab-btn:hover:not(.active) { color: #444; }
+
+  .week-nav {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #555;
+  }
+  .week-nav button {
+    width: 28px; height: 28px;
+    border: 1px solid #ddd;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .week-nav button:hover { background: #f5f4f0; }
+  .week-label { font-weight: 500; min-width: 140px; text-align: center; }
+
+  .content { padding: 20px 24px; }
+
+  /* TODAY VIEW */
+  .day-grid { display: grid; gap: 12px; }
+
+  .loading-card {
+    background: #fff;
+    border: 1px solid #e0ddd4;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 72px 1fr auto;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+  }
+  .loading-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+
+  .card-id-col {
+    background: #f5f4f0;
+    border-right: 1px solid #e0ddd4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    gap: 2px;
+  }
+  .card-id-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #888; }
+  .card-id-value { font-size: 22px; font-weight: 600; color: #1a1a18; line-height: 1; }
+
+  .card-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .card-haulier { font-size: 17px; font-weight: 600; }
+  .card-po { font-size: 14px; color: #555; }
+  .card-times { display: flex; gap: 16px; margin-top: 4px; }
+  .time-item { display: flex; flex-direction: column; gap: 1px; }
+  .time-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #999; }
+  .time-value { font-size: 15px; font-weight: 500; }
+  .time-value.overdue { color: #A32D2D; }
+  .time-value.empty { color: #bbb; }
+
+  .time-input-wrap { display: flex; flex-direction: column; gap: 3px; }
+  .time-stamp-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px dashed #ccc;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 14px; font-weight: 500;
+    color: #bbb;
+    transition: all 0.15s;
+    white-space: nowrap;
+    min-width: 72px;
+  }
+  .time-stamp-btn:hover { border-color: #378ADD; color: #378ADD; background: #E6F1FB; }
+  .time-stamp-btn.stamped { border-style: solid; border-color: #ddd; background: #f5f4f0; color: #1a1a18; }
+  .time-stamp-btn.stamped:hover { border-color: #E24B4A; color: #E24B4A; background: #FCEBEB; }
+  .time-stamp-btn.flash { border-color: #639922; background: #EAF3DE; color: #3B6D11; }
+  .time-stamp-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  .loading-card.special-delivery {
+    border: 2px solid #534AB7;
+    background: #EEEDFE;
+  }
+  .loading-card.special-delivery .card-id-col {
+    background: #534AB7;
+    border-right-color: #534AB7;
+  }
+  .loading-card.special-delivery .card-id-label { color: #CECBF6; }
+  .loading-card.special-delivery .card-id-value { color: #fff; }
+
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+    margin: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .modal-title { font-size: 16px; font-weight: 600; color: #1a1a18; }
+  .modal-field { display: flex; flex-direction: column; gap: 5px; }
+  .modal-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #888; font-weight: 600; }
+  .modal select, .modal input[type=text], .modal input[type=time] {
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: var(--font);
+    color: #1a1a18;
+    background: #fff;
+    width: 100%;
+  }
+  .modal select:focus, .modal input:focus { outline: none; border-color: #378ADD; box-shadow: 0 0 0 2px rgba(55,138,221,0.15); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+  .modal-btn {
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    border: 1px solid #ddd;
+    background: #fff;
+  }
+  .modal-btn.primary { background: #534AB7; color: #fff; border-color: #534AB7; }
+  .modal-btn.primary:hover { background: #3C3489; }
+  .modal-btn:hover:not(.primary) { background: #f5f4f0; }
+  .add-vehicle-btn {
+    margin-left: auto;
+    padding: 0 14px;
+    height: 32px;
+    background: #534AB7;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    white-space: nowrap;
+    align-self: center;
+  }
+  .add-vehicle-btn:hover { background: #3C3489; }
+  .loading-card { position: relative; }
+  .loading-card.card-late {
+    border-color: #E24B4A;
+    background: #FCEBEB;
+    animation: cardlate 1.6s ease-in-out infinite;
+  }
+  .loading-card.card-late .card-id-col {
+    background: #E24B4A;
+    border-right-color: #E24B4A;
+  }
+  .loading-card.card-late .card-id-label { color: #F7C1C1; }
+  .loading-card.card-late .card-id-value { color: #fff; }
+  @keyframes cardlate {
+    0%,100%{ border-color:#E24B4A; box-shadow:0 0 0 0 rgba(226,75,74,0); }
+    50%    { border-color:#E24B4A; box-shadow:0 0 0 3px rgba(226,75,74,0.25); }
+  }
+  .card-delete-btn {
+    position: absolute; top: 6px; right: 6px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px solid #e0ddd4;
+    background: #fff;
+    color: #bbb;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+    z-index: 10;
+  }
+  .loading-card:hover .card-delete-btn { opacity: 1; }
+  .card-delete-btn:hover { color: #E24B4A; border-color: #E24B4A; background: #FCEBEB; }
+  .flag-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 13px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    animation: flagpulse 1.8s ease-in-out infinite;
+  }
+  .flag-badge .flag-icon { font-size: 16px; color: #EF9F27; }
+  .flag-split    { background: #FAEEDA; color: #854F0B; border: 1px solid #BA7517; }
+  .flag-transfer { background: #EEEDFE; color: #3C3489; border: 1px solid #534AB7; }
+  .flag-stand    { background: #FCEBEB; color: #791F1F; border: 1px solid #E24B4A; }
+  .flag-preload  { background: #E6F1FB; color: #0C447C; border: 1px solid #378ADD; }
+  @keyframes flagpulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+  .eta-wrap { display:flex; flex-direction:column; gap:2px; }
+  .eta-label { font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#A32D2D; font-weight:600; }
+  .eta-btn {
+    display:flex; align-items:center; gap:5px;
+    padding:4px 8px; border-radius:4px;
+    border:1px dashed #E24B4A; background:transparent;
+    cursor:pointer; font-family:var(--font);
+    font-size:14px; font-weight:600; color:#E24B4A;
+    transition:all 0.15s; white-space:nowrap;
+  }
+  .eta-btn:hover { background:#FCEBEB; }
+  .eta-btn.stamped { border-style:solid; background:#FCEBEB; color:#791F1F; }
+  .eta-btn.flash { background:#FAEEDA; border-color:#BA7517; color:#854F0B; }
+
+  .card-status-col {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+  }
+  .status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .s-not-booked{ background: #F1EFE8; color: #2C2C2A; border: 1px dashed #888780; }
+  .s-arrived   { background: var(--bay-blue);  color: var(--bay-blue-text);  border: 1px solid var(--bay-blue-border); }
+  .s-loading   { background: var(--bay-amber); color: var(--bay-amber-text); border: 1px solid var(--bay-amber-border); }
+  .s-departed  { background: var(--bay-green); color: var(--bay-green-text); border: 1px solid var(--bay-green-border); }
+  .s-delayed   { background: var(--bay-red);   color: var(--bay-red-text);   border: 1px solid var(--bay-red-border); }
+
+  /* WEEK VIEW */
+  .week-view { }
+  .day-section { margin-bottom: 20px; }
+  .day-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .day-name { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #555; }
+  .day-date { font-size: 12px; color: #999; }
+  .day-count { font-size: 11px; background: #eee; color: #555; padding: 2px 8px; border-radius: 20px; }
+  .day-divider { flex: 1; height: 1px; background: #e0ddd4; }
+
+  /* SUMMARY BAR */
+  .summary-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .summary-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid;
+  }
+  .summary-pill .pill-num { font-size: 16px; font-weight: 700; }
+
+  /* SHEET CONFIG BANNER */
+  .config-banner {
+    background: var(--bay-blue);
+    border: 1px solid var(--bay-blue-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--bay-blue-text);
+  }
+  .config-banner input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--bay-blue-border);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: var(--font);
+    background: rgba(255,255,255,0.7);
+    color: #1a1a18;
+  }
+  .config-banner button {
+    padding: 6px 14px;
+    background: var(--bay-blue-text);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .config-banner button:hover { opacity: 0.85; }
+
+  .last-refresh { font-size: 11px; color: #999; margin-left: auto; }
+  .refresh-btn {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: var(--font);
+    color: #555;
+  }
+  .refresh-btn:hover { background: #f5f4f0; }
+
+  .error-msg { background: var(--bay-red); color: var(--bay-red-text); border: 1px solid var(--bay-red-border); padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+
+  .empty-day { color: #bbb; font-size: 13px; padding: 8px 0; }
+
+  @media(max-width:640px){
+    /* Header */
+    header { padding: 0 12px; height: 48px; }
+    header .brand { display: none; }
+    header .title { font-size: 13px; }
+    header .meta { font-size: 11px; gap: 8px; }
+
+    /* Controls / tabs */
+    .controls {
+      padding: 0 8px;
+      height: auto;
+      flex-wrap: wrap;
+      gap: 0;
+      padding-bottom: 4px;
+    }
+    .tab-btn { font-size: 12px; padding: 0 10px; height: 40px; }
+    .week-nav { margin-left: 0; font-size: 12px; gap: 4px; width: 100%; justify-content: center; padding: 4px 0; }
+    .week-label { min-width: 0; font-size: 12px; }
+    .add-vehicle-btn { margin-left: 0; width: 100%; height: 36px; font-size: 13px; margin-top: 4px; border-radius: 4px; }
+
+    /* Content */
+    .content { padding: 10px 10px; }
+
+    /* Dial panel */
+    #dial-panel { flex-direction: column; gap: 0; }
+    #dial-panel > div { border-right: none !important; border-bottom: 1px solid #e0ddd4; width: 100%; }
+    #dial-panel > div:last-child { border-bottom: none; }
+
+    /* Summary pills */
+    .summary-bar { gap: 6px; }
+    .summary-pill { font-size: 11px; padding: 4px 8px; }
+    .summary-pill .pill-num { font-size: 13px; }
+
+    /* Cards — stack vertically */
+    .loading-card {
+      grid-template-columns: 56px 1fr;
+      grid-template-rows: auto auto;
+    }
+    .card-id-col {
+      grid-row: 1 / 3;
+      padding: 10px 6px;
+    }
+    .card-id-value { font-size: 18px; }
+    .card-body { padding: 10px 10px 6px 10px; }
+    .card-haulier { font-size: 15px; }
+    .card-po { font-size: 13px; }
+    .card-status-col {
+      grid-column: 2;
+      padding: 0 10px 10px 10px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    /* Times — wrap onto 2 rows on small screens */
+    .card-times { gap: 8px; flex-wrap: wrap; }
+    .time-stamp-btn { font-size: 13px; min-width: 64px; padding: 5px 7px; }
+    .time-item .time-value { font-size: 14px; }
+
+    /* Delete button always visible on mobile */
+    .card-delete-btn { opacity: 1; }
+
+    /* Day/week section headers */
+    .day-section-header { flex-wrap: wrap; gap: 4px; }
+    .day-name { font-size: 13px; }
+    .day-date { font-size: 12px; }
+
+    /* Modal full screen on mobile */
+    .modal { margin: 0; border-radius: 12px 12px 0 0; position: fixed; bottom: 0; left: 0; right: 0; max-width: 100%; }
+    .modal-overlay { align-items: flex-end; }
+
+    /* ETA button */
+    .eta-btn { font-size: 13px; }
+
+    /* Flag badges */
+    .flag-badge { font-size: 12px; padding: 3px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">Staircraft Group</span>
+  <span class="title">Vehicle Loading Board</span>
+  <span class="meta">
+    <span><span class="live-dot"></span>Live</span>
+    <span id="sync-time" style="font-size:11px;color:#666;"></span>
+    <span id="clock"></span>
+  </span>
+</header>
+
+<div class="controls">
+  <button class="tab-btn active" id="tab-today" onclick="setView('today')">Day view</button>
+  <button class="tab-btn" id="tab-week" onclick="setView('week')">Week at a glance</button>
+  <button class="tab-btn" id="tab-graphs" onclick="setView('graphs')">Graphs</button>
+  <div class="week-nav" id="day-nav-ctrl">
+    <button onclick="changeDay(-1)">&#8249;</button>
+    <span class="week-label" id="day-label">-</span>
+    <button onclick="changeDay(1)">&#8250;</button>
+  </div>
+  <div class="week-nav" id="week-nav-ctrl" style="display:none;">
+    <button onclick="changeWeek(-1)">&#8249;</button>
+    <span class="week-label" id="week-label">-</span>
+    <button onclick="changeWeek(1)">&#8250;</button>
+  </div>
+  <button class="add-vehicle-btn" onclick="openAddModal()">+ Add vehicle</button>
+</div>
+
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">Add special delivery</div>
+    <div class="modal-field">
+      <span class="modal-label">Haulier</span>
+      <select id="modal-haulier">
+        <option value="">Select haulier…</option>
+        <option>RGF</option>
+        <option>Transol</option>
+        <option>Customer Collection</option>
+        <option>LTS</option>
+        <option>Staircraft</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="modal-field" id="modal-haulier-other-wrap" style="display:none;">
+      <span class="modal-label">Haulier name</span>
+      <input type="text" id="modal-haulier-other" placeholder="Enter haulier name…"/>
+    </div>
+    <div class="modal-field">
+      <span class="modal-label">Vehicle size</span>
+      <select id="modal-vehicle-size">
+        <option value="">Select size…</option>
+        <option>Artic</option>
+        <option>26t</option>
+        <option>18t</option>
+        <option>7.5t</option>
+        <option>3.5t</option>
+        <option>Van</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <span class="modal-label">Due time</span>
+      <input type="time" id="modal-due-time"/>
+    </div>
+    <div class="modal-field">
+      <span class="modal-label">Load ID / Reference</span>
+      <input type="text" id="modal-load-id" placeholder="e.g. SD-001 or delivery ref…"/>
+    </div>
+    <div class="modal-field">
+      <span class="modal-label">Date</span>
+      <input type="date" id="modal-date"/>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeAddModal()">Cancel</button>
+      <button class="modal-btn primary" onclick="submitAddModal()">Add vehicle</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div id="config-banner" style="display:none;">
+    <input type="text" id="sheet-url-input" value="" />
+    <input type="text" id="sync-url-input" value="" />
+  </div>
+
+  <div id="error-box" class="error-msg" style="display:none"></div>
+
+  <div id="dial-panel" style="display:flex;align-items:center;gap:0;background:#fff;border:1px solid #e0ddd4;border-radius:8px;margin-bottom:16px;overflow:hidden;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:20px;padding:16px 24px;flex:1;min-width:240px;">
+      <div style="flex-shrink:0;">
+        <canvas id="dial-canvas" width="140" height="80" role="img" aria-label="Dial showing vehicles arrived vs due today"></canvas>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#888;font-weight:600;">Today's vehicles</div>
+        <div style="display:flex;align-items:baseline;gap:6px;">
+          <span id="dial-arrived" style="font-size:36px;font-weight:700;color:#1a1a18;line-height:1;">0</span>
+          <span id="dial-due-label" style="font-size:15px;color:#888;">/ 0 today</span>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:2px;">
+          <span style="font-size:12px;display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#639922;display:inline-block;"></span><span style="color:#555;">Completed</span></span>
+          <span style="font-size:12px;display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#e0ddd4;display:inline-block;"></span><span style="color:#555;">Not due</span></span>
+        </div>
+      </div>
+    </div>
+    <div style="width:1px;background:#e0ddd4;align-self:stretch;"></div>
+    <div style="display:flex;align-items:center;gap:20px;padding:16px 24px;flex:1;min-width:240px;">
+      <div style="flex-shrink:0;">
+        <canvas id="dial-canvas-late" width="140" height="80" role="img" aria-label="Dial showing late loading vehicles"></canvas>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#888;font-weight:600;">Loading time exceeded</div>
+        <div style="display:flex;align-items:baseline;gap:6px;">
+          <span id="dial-late" style="font-size:36px;font-weight:700;color:#1a1a18;line-height:1;">0</span>
+          <span id="dial-late-label" style="font-size:15px;color:#888;">/ 0 loaded</span>
+        </div>
+        <div id="dial-late-excess" style="font-size:12px;color:#A32D2D;font-weight:600;min-height:16px;"></div>
+        <div style="display:flex;gap:12px;margin-top:2px;">
+          <span style="font-size:12px;display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#E24B4A;display:inline-block;"></span><span style="color:#555;">Over 1 hr</span></span>
+          <span style="font-size:12px;display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#e0ddd4;display:inline-block;"></span><span style="color:#555;">On time</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-bar" id="summary-bar"></div>
+
+  <div id="main-content"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'sc_loading_sheet_url';
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTE48DqbNHndIIQMz8bGp1AL5tTKCDbhmLi8UGB-F473Q6n4jaPZ6DGdSjviMIKRZMvLk7ZjmlYGfCQ/pub?gid=1927254350&single=true&output=csv';
+
+let currentView = 'today';
+let weekOffset = 0;
+let dayOffset = 0;
+let allRows = [];
+let chartInstances = {};
+
+const STATUS_ORDER = ['not_booked','booked','arrived','loading','departed','delayed'];
+const STATUS_CLASS  = {not_booked:'s-not-booked',booked:'s-booked',arrived:'s-arrived',loading:'s-loading',departed:'s-departed',delayed:'s-delayed'};
+const STATUS_LABEL  = {not_booked:'Not Booked',booked:'Booked',arrived:'Arrived',loading:'Loading',departed:'Departed',delayed:'Delayed'};
+
+/* -- Clock -- */
+function clock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(clock,1000); clock();
+
+/* -- Week helpers -- */
+function getWeekRange(offset){
+  const now=new Date(), day=now.getDay();
+  const mon=new Date(now); mon.setDate(now.getDate()-((day+6)%7)+offset*7);
+  const fri=new Date(mon); fri.setDate(mon.getDate()+4);
+  return {mon,fri};
+}
+function fmtDate(d){ return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); }
+function fmtDateKey(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function fmtDateShort(k){ return new Date(k+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); }
+
+function updateWeekLabel(){
+  const {mon,fri}=getWeekRange(weekOffset);
+  const today=new Date();
+  const start=weekOffset===0?today:mon;
+  document.getElementById('week-label').textContent=`${fmtDate(start)} - ${fmtDate(fri)}`;
+}
+updateWeekLabel();
+
+function getViewDate(){
+  const d=new Date(); d.setDate(d.getDate()+dayOffset); return d;
+}
+function updateDayLabel(){
+  const d=getViewDate();
+  const isToday=dayOffset===0;
+  const label=isToday?'Today - '+fmtDate(d):fmtDate(d)+' '+d.toLocaleDateString('en-GB',{weekday:'short'});
+  document.getElementById('day-label').textContent=label;
+}
+updateDayLabel();
+
+function changeDay(dir){ dayOffset+=dir; updateDayLabel(); render(); }
+function changeWeek(dir){ weekOffset+=dir; updateWeekLabel(); render(); }
+
+/* -- Tab switching -- */
+function setView(v){
+  currentView=v;
+  ['today','week','graphs'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('active',t===v));
+  document.getElementById('day-nav-ctrl').style.display  = v==='today'?'flex':'none';
+  document.getElementById('week-nav-ctrl').style.display = v==='week'?'flex':'none';
+  document.getElementById('dial-panel').style.display    = v==='graphs'?'none':'flex';
+  document.getElementById('summary-bar').style.display   = v==='graphs'?'none':'flex';
+  render();
+}
+
+/* -- Sheet URL -- */
+function saveSheetUrl(){
+  const url=document.getElementById('sheet-url-input').value.trim();
+  if(!url){alert('Please paste a valid Google Sheets CSV URL.');return;}
+  localStorage.setItem(STORAGE_KEY,url);
+  fetchData(url);
+}
+
+/* -- Fetch & parse -- */
+async function tryFetch(url){
+  // Direct fetch first — works from GitHub Pages (https://)
+  try{
+    const res=await fetch(url,{cache:'no-store'});
+    if(res.ok){
+      const text=await res.text();
+      if(text.length>500&&text.includes(',')) return text;
+    }
+  }catch(e){}
+  // Proxy fallbacks for local file access
+  const proxies=[
+    'https://corsproxy.io/?url=',
+    'https://api.allorigins.win/raw?url=',
+    'https://thingproxy.freeboard.io/fetch/',
+  ];
+  for(const proxy of proxies){
+    try{
+      const res=await fetch(proxy+encodeURIComponent(url),{cache:'no-store'});
+      if(res.ok){
+        const text=await res.text();
+        if(text.length>500&&text.includes(',')) return text;
+      }
+    }catch(e){}
+  }
+  throw new Error('All fetches failed');
+}
+
+async function fetchData(url){
+  const errBox=document.getElementById('error-box');
+  try{
+    const text=await tryFetch(url+'&t='+Date.now());
+    const parsed=parseCSV(text);
+    if(parsed.length>0){
+      allRows=parsed;
+      errBox.style.display='none';
+      render();
+    }
+  }catch(e){
+    errBox.style.display='none';
+  }
+}
+
+function parseCSV(text){
+  // Join multi-line quoted fields before splitting into rows
+  const rows=[];
+  const chars=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  let lines=[], cur='', inQ=false;
+  for(let i=0;i<chars.length;i++){
+    const ch=chars[i];
+    if(ch==='"') inQ=!inQ;
+    if(ch==='\n'&&!inQ){ lines.push(cur); cur=''; }
+    else cur+=ch;
+  }
+  if(cur) lines.push(cur);
+
+  if(lines.length<3) return [];
+  for(let i=2;i<lines.length;i++){
+    const line=lines[i];
+    const vals=[];
+    let c='',q=false;
+    for(let j=0;j<line.length;j++){
+      const ch=line[j];
+      if(ch==='"'){q=!q;}
+      else if(ch===','&&!q){vals.push(c.trim());c='';}
+      else{c+=ch;}
+    }
+    vals.push(c.trim());
+    const get=idx=>(vals[idx]||'').replace(/^"|"$/g,'').trim();
+    const loadId=get(1);
+    const jobType=get(0);
+    if(!loadId || !/^\d/.test(loadId)) continue;
+    if(jobType.toLowerCase()!=='f1 1st fix') continue;
+    const date=get(5);
+    const vehicleSize=get(9);
+    const rawTimeDue=get(21);
+    let timeDue='';
+    if(rawTimeDue){
+      if(/^\d{1,2}:\d{2}/.test(rawTimeDue)){
+        // HH:MM:SS or HH:MM
+        timeDue=rawTimeDue.replace(/^(\d{1,2}:\d{2}):\d{2}$/,'$1');
+      } else if(/^0?\.\d+$/.test(rawTimeDue)||/^\d+\.\d+$/.test(rawTimeDue)){
+        // Google Sheets time as decimal fraction e.g. 0.270833 = 06:30
+        const totalMins=Math.round(parseFloat(rawTimeDue)*24*60);
+        const h=Math.floor(totalMins/60), mn=totalMins%60;
+        timeDue=`${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
+      }
+    }
+    const colAC=get(28).trim();
+    const colACUpper=colAC.toUpperCase();
+    const standMatch=colACUpper.match(/^STAND\s*(\d+)$/);
+    const flag = colACUpper==='SPLIT' ? 'split'
+               : colACUpper==='TRANSFER' ? 'transfer'
+               : colACUpper==='PRELOAD' ? 'preload'
+               : colACUpper==='STAND' ? 'stand'
+               : standMatch ? 'stand '+standMatch[1]
+               : '';
+    const delayed = colACUpper==='DELAYED';
+    rows.push({loading_id:loadId, date:date, vehicle_size:vehicleSize, time_due:timeDue, status:timeDue?'booked':'not_booked', flag:flag, delayed:delayed});
+  }
+  return rows;
+}
+
+/* -- Date parsing -- */
+function parseSheetDate(raw){
+  if(!raw) return '';
+  raw=raw.trim();
+  // Already ISO YYYY-MM-DD (demo data)
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // DD/MM/YYYY - sheet format
+  let m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // D-M-YYYY
+  m=raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if(m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  try{const d=new Date(raw);if(!isNaN(d))return d.toISOString().slice(0,10);}catch(e){}
+  return '';
+}
+
+function rowsForDate(dateKey){
+  const sheetRows=allRows.filter(r=>parseSheetDate(r.date)===dateKey);
+  const special=getSpecialForDate(dateKey);
+  return [...sheetRows,...special];
+}
+function rowsForToday(){
+  return rowsForDate(fmtDateKey(new Date()));
+}
+
+/* -- Status -- */
+function getAutoStatus(id, row){
+  const arr=loadTime(id,'arrival');
+  const inT=loadTime(id,'in');
+  const out=loadTime(id,'out');
+  if(out) return 'departed';
+  if(inT) return 'loading';
+  if(arr) return 'arrived';
+  if(row && !row.time_due) return 'not_booked';
+  return 'booked';
+}
+
+function getStatusForRow(row){
+  return getAutoStatus(row.loading_id||'', row);
+}
+
+/* -- localStorage times -- */
+function getTimeKey(id,field){ return `sc_time_${id}_${field}`; }
+function saveTime(id,field,value){
+  localStorage.setItem(getTimeKey(id,field),value);
+  localStorage.setItem(getTimeKey(id,field)+'_ts', Date.now());
+}
+function clearTime(id,field){
+  localStorage.setItem(getTimeKey(id,field),'');
+  localStorage.removeItem(getTimeKey(id,field)+'_ts');
+}
+function loadTime(id,field){ return localStorage.getItem(getTimeKey(id,field))||''; }
+function loadTimeTs(id,field){ return parseInt(localStorage.getItem(getTimeKey(id,field)+'_ts')||'0'); }
+const SYNC_URL_KEY = 'sc_sync_url';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygUjKJdQ3leJAIVAMhotj63dzwdQ7YXWnzkePf_-m6eTFp4FAIDMaA2A8lm0ZlDCftGA/exec';
+function getSyncUrl(){ return APPS_SCRIPT_URL; }
+
+function extractTime(val){
+  if(!val) return '';
+  const s=String(val).trim();
+  if(s==='CLEARED') return 'CLEARED';
+  if(/^\d{1,2}:\d{2}$/.test(s)) return s;
+  const m=s.match(/(\d{1,2}):(\d{2}):\d{2}/);
+  if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
+  return s;
+}
+
+function cleanVal(v){ return String(v||'').replace(/[\r\n]+/g,' ').trim(); }
+
+function syncToSheet(loadId){
+  const url=getSyncUrl();
+  if(!url) return;
+  const row=allRows.find(r=>r.loading_id===loadId)||{};
+  const payload={
+    action:      'write',
+    load_id:     cleanVal(loadId),
+    date:        cleanVal(fmtDateKey(getViewDate())),
+    vehicle_size:cleanVal(row.vehicle_size),
+    time_due:    cleanVal(row.time_due),
+    arrival:     cleanVal(loadTime(loadId,'arrival'))||'CLEARED',
+    time_in:     cleanVal(loadTime(loadId,'in'))||'CLEARED',
+    time_out:    cleanVal(loadTime(loadId,'out'))||'CLEARED',
+    eta:         cleanVal(loadTime(loadId,'eta'))||'CLEARED',
+    status:      cleanVal(getAutoStatus(loadId,row)),
+    haulier:     cleanVal(row.special?(row.haulier||'Special'):'LTS'),
+    timestamp:   new Date().toISOString()
+  };
+  fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{});
+}
+
+const TIMES_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7oxEQO6F9fZYwBwtBe2Sfcz9yA2nc1iR0XwnYxXtu1H-4eCScZIDOZndnw6UfeIIGHR3RlvlDlPID/pub?output=csv';
+
+async function pullSpecialVehicles(){
+  try{
+    const res=await fetch(`${APPS_SCRIPT_URL}?type=special&t=${Date.now()}`);
+    const text=await res.text();
+    const data=JSON.parse(text);
+    if(!Array.isArray(data)||data.length===0) return;
+    const local=loadSpecialDeliveries();
+    let changed=false;
+    data.forEach(r=>{
+      const id=r.load_id;
+      if(!id) return;
+      const exists=local.find(l=>l.loading_id===id);
+      if(!exists){
+        local.push({
+          loading_id:id, date:r.date, haulier:r.haulier,
+          vehicle_size:r.vehicle_size, time_due:r.time_due,
+          flag:r.flag||'', status:r.time_due?'booked':'not_booked',
+          special:true
+        });
+        changed=true;
+      }
+    });
+    if(changed){ saveSpecialDeliveries(local); render(); }
+  }catch(e){}
+}
+
+async function pullFromSheet(){
+  const date=fmtDateKey(getViewDate());
+  const now=Date.now();
+  let data=null;
+
+  // Try Apps Script direct fetch first
+  try{
+    const res=await fetch(`${APPS_SCRIPT_URL}?action=read&date=${date}&t=${now}`);
+    const text=await res.text();
+    data=JSON.parse(text);
+  }catch(e){}
+
+  // Fall back to CSV if Apps Script fails
+  if(!Array.isArray(data)){
+    try{
+      const res=await fetch(TIMES_SHEET_URL+'&t='+now);
+      const text=await res.text();
+      const lines=text.trim().split('\n');
+      // Parse CSV handling multi-line quoted fields
+      const chars=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+      const csvLines=[];let cl='',cq=false;
+      for(let ci=0;ci<chars.length;ci++){
+        const cc=chars[ci];
+        if(cc==='"') cq=!cq;
+        if(cc==='\n'&&!cq){csvLines.push(cl);cl='';}
+        else cl+=cc;
+      }
+      if(cl) csvLines.push(cl);
+      data=[];
+      const latestByID={};
+      for(let i=1;i<csvLines.length;i++){
+        const vals=[];let cur='',inQ=false;
+        for(const ch of csvLines[i]){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){vals.push(cur.trim());cur='';}else{cur+=ch;}}
+        vals.push(cur.trim());
+        const get=idx=>(vals[idx]||'').replace(/^"|"$/g,'').replace(/[\r\n]+/g,' ').trim();
+        const rowId=get(0), rowDate=get(1), rowTs=get(7);
+        if(!rowId||rowDate!==date) continue;
+        if(!latestByID[rowId]||rowTs>latestByID[rowId].ts){
+          latestByID[rowId]={ts:rowTs,load_id:rowId,date:rowDate,
+            arrival:extractTime(get(2)),
+            time_in:extractTime(get(3)),
+            time_out:extractTime(get(4)),
+            eta:extractTime(get(5))};
+        }
+      }
+      data=Object.values(latestByID);
+    }catch(e){ return; }
+  }
+
+  if(!Array.isArray(data)) return;
+  let changed=false;
+  const specialFromSheet=[];
+  data.forEach(row=>{
+    const id=String(row.load_id||'').trim();
+    if(!id) return;
+    // Handle special vehicles
+    if(row.type==='special'){
+      const deleted=getDeletedSpecials();
+      if(deleted.includes(id)) return;
+      const existing=loadSpecialDeliveries().find(s=>s.loading_id===id);
+      if(!existing){
+        specialFromSheet.push({
+          loading_id:id, date:row.date||fmtDateKey(getViewDate()),
+          haulier:row.haulier||'', vehicle_size:row.vehicle_size||'',
+          time_due:row.time_due||'', flag:row.flag||'',
+          status:row.time_due?'booked':'not_booked', special:true
+        });
+      }
+      return;
+    }
+    // Handle regular time entries
+    [['arrival','arrival'],['time_in','in'],['time_out','out'],['eta','eta']].forEach(([key,field])=>{
+      const raw=String(row[key]||'').trim();
+      const isCleared=raw==='CLEARED';
+      const sheetVal=isCleared?'':raw;
+      const localVal=loadTime(id,field);
+      const localTs=loadTimeTs(id,field);
+      if(isCleared){
+        if(localVal!==''){clearTime(id,field);changed=true;}
+      } else if(raw){
+        if(now-localTs>=90000&&sheetVal!==localVal){saveTime(id,field,sheetVal);changed=true;}
+      }
+    });
+  });
+  if(specialFromSheet.length>0){
+    const all=loadSpecialDeliveries();
+    specialFromSheet.forEach(s=>all.push(s));
+    saveSpecialDeliveries(all);
+    changed=true;
+  }
+  if(changed) render();
+  const el=document.getElementById('sync-time');
+  if(el) el.textContent='Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function updateCardStatus(id){
+  const card=document.querySelector(`.time-stamp-btn[data-id="${id}"]`)?.closest('.loading-card');
+  if(!card) return;
+  const badge=card.querySelector('.status-badge');
+  if(!badge) return;
+  const row=allRows.find(r=>r.loading_id===id)||{};
+  const status=getAutoStatus(id, row);
+  badge.className='status-badge '+STATUS_CLASS[status];
+  badge.textContent=STATUS_LABEL[status];
+}
+
+function handleETA(btn){
+  const id=btn.dataset.id;
+  const existing=loadTime(id,'eta');
+  const fieldLabel='ETA';
+  if(existing){
+    const choice=confirm(`ETA: ${existing}\n\nOK = Edit ETA\nCancel = Clear ETA`);
+    if(choice){
+      const edited=prompt('Edit ETA (HH:MM):',existing);
+      if(edited===null) return;
+      const clean=edited.trim();
+      if(!/^\d{1,2}:\d{2}$/.test(clean)){ alert('Please enter time as HH:MM (e.g. 10:30)'); return; }
+      saveTime(id,'eta',clean);
+      btn.classList.add('stamped','flash');
+      btn.innerHTML=`<span class="time-stamp-dot"></span>ETA: ${clean}`;
+      setTimeout(()=>btn.classList.remove('flash'),800);
+    } else {
+      clearTime(id,'eta');
+      btn.classList.remove('stamped');
+      btn.innerHTML=`<span class="time-stamp-dot"></span>Set ETA`;
+    }
+  } else {
+    const entered=prompt('Enter new ETA (HH:MM):','');
+    if(!entered) return;
+    const clean=entered.trim();
+    if(!/^\d{1,2}:\d{2}$/.test(clean)){ alert('Please enter time as HH:MM (e.g. 10:30)'); return; }
+    saveTime(id,'eta',clean);
+    btn.classList.add('stamped','flash');
+    btn.innerHTML=`<span class="time-stamp-dot"></span>ETA: ${clean}`;
+    setTimeout(()=>btn.classList.remove('flash'),800);
+  }
+  syncToSheet(id);
+}
+
+function handleStamp(btn){
+  const id=btn.dataset.id;
+  const field=btn.dataset.field;
+  const existing=loadTime(id,field);
+  const fieldLabel=field==='arrival'?'Arrival':field==='in'?'Time In':'Time Out';
+
+  if(existing){
+    const action=window.confirm(`${fieldLabel}: ${existing}\n\nOK = Edit   |   Cancel = Clear`);
+    if(action===null) return;
+    if(action){
+      const edited=window.prompt(`Edit ${fieldLabel} (HH:MM):`,existing);
+      if(!edited) return;
+      const clean=edited.trim();
+      if(!/^\d{1,2}:\d{2}$/.test(clean)){ window.alert('Please enter time as HH:MM'); return; }
+      saveTime(id,field,clean);
+      btn.classList.add('stamped','flash');
+      btn.innerHTML=`<span class="time-stamp-dot"></span>${clean}`;
+      setTimeout(()=>btn.classList.remove('flash'),800);
+    } else {
+      clearTime(id,field);
+      btn.classList.remove('stamped');
+      btn.innerHTML=`<span class="time-stamp-dot"></span>${fieldLabel}`;
+    }
+  } else {
+    const now=new Date();
+    const t=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    saveTime(id,field,t);
+    btn.classList.add('stamped','flash');
+    btn.innerHTML=`<span class="time-stamp-dot"></span>${t}`;
+    setTimeout(()=>btn.classList.remove('flash'),800);
+  }
+  updateCardStatus(id);
+  buildSummary(currentView==='today'?rowsForDate(fmtDateKey(getViewDate())):rowsForDate(fmtDateKey(new Date())));
+  syncToSheet(id);
+}
+
+/* -- Dials -- */
+function drawDial(canvasId,arrived,due,overrideColor){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const W=140,H=80,cx=W/2,cy=H-10,r=62;
+  const pct=due>0?Math.min(arrived/due,1):0;
+  ctx.clearRect(0,0,W,H);
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,2*Math.PI);
+  ctx.lineWidth=14; ctx.strokeStyle='#e0ddd4'; ctx.lineCap='round'; ctx.stroke();
+  if(pct>0){
+    const color=overrideColor||(pct>=1?'#639922':pct>=0.5?'#BA7517':'#378ADD');
+    ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,Math.PI+pct*Math.PI);
+    ctx.lineWidth=14; ctx.strokeStyle=color; ctx.lineCap='round'; ctx.stroke();
+  }
+}
+
+/* -- Late loading calc -- */
+function parseTimeToday(str){
+  if(!str) return null;
+  const p=str.match(/(\d{1,2}):(\d{2})/);
+  if(!p) return null;
+  const n=new Date();
+  return new Date(n.getFullYear(),n.getMonth(),n.getDate(),+p[1],+p[2]);
+}
+
+function calcLateLoading(rows){
+  let late=0,eligible=0,totalExcessMins=0;
+  const lateIds=new Set();
+  rows.forEach(r=>{
+    const id=r.loading_id||'';
+    const arr=loadTime(id,'arrival');
+    const out=loadTime(id,'out');
+    if(!out) return;
+    const due=parseTimeToday(r.time_due);
+    const arrT=parseTimeToday(arr);
+    const start=[due,arrT].filter(Boolean).reduce((a,b)=>a>b?a:b,null);
+    if(!start) return;
+    const end=parseTimeToday(out);
+    if(!end) return;
+    eligible++;
+    const mins=(end-start)/60000;
+    if(mins>60){
+      late++;
+      totalExcessMins+=Math.round(mins-60);
+      lateIds.add(id);
+    }
+  });
+  return {late,eligible,totalExcessMins,lateIds};
+}
+
+function fmtExcess(mins){
+  if(mins<=0) return '';
+  if(mins<60) return `+${mins}m over`;
+  const h=Math.floor(mins/60), m=mins%60;
+  return m>0?`+${h}h ${m}m over`:`+${h}h over`;
+}
+
+/* -- Summary bar + dials -- */
+function buildSummary(rows){
+  const counts={not_booked:0,booked:0,arrived:0,loading:0,departed:0,delayed:0};
+  rows.forEach(r=>{const s=getStatusForRow(r);if(counts[s]!==undefined)counts[s]++;});
+
+  const arrivedCount=counts.arrived+counts.loading+counts.departed;
+  drawDial('dial-canvas',arrivedCount,rows.length,null);
+  document.getElementById('dial-arrived').textContent=arrivedCount;
+  document.getElementById('dial-due-label').textContent=`/ ${rows.length} ${dayOffset===0?'today':'loads'}`;
+
+  const {late,eligible,totalExcessMins,lateIds}=calcLateLoading(rows);
+  const lateColor=late===0?'#639922':late/Math.max(eligible,1)>=0.5?'#E24B4A':'#BA7517';
+  drawDial('dial-canvas-late',late,eligible,lateColor);
+  document.getElementById('dial-late').textContent=late;
+  document.getElementById('dial-late-label').textContent=`/ ${eligible} loaded`;
+  document.getElementById('dial-late-excess').textContent=late>0?fmtExcess(totalExcessMins):'';
+
+  document.querySelectorAll('.loading-card').forEach(card=>{
+    const btn=card.querySelector('.time-stamp-btn');
+    const id=btn?btn.dataset.id:'';
+    if(lateIds.has(id)){
+      card.classList.add('card-late');
+    } else {
+      card.classList.remove('card-late');
+    }
+  });
+
+  const defs=[
+    {key:'not_booked',bg:'#F1EFE8',          tc:'#2C2C2A',              bc:'#888780'},
+    {key:'booked',    bg:'var(--bay-gray)',   tc:'var(--bay-gray-text)', bc:'var(--bay-gray-border)'},
+    {key:'arrived',   bg:'var(--bay-blue)',   tc:'var(--bay-blue-text)', bc:'var(--bay-blue-border)'},
+    {key:'loading',   bg:'var(--bay-amber)',  tc:'var(--bay-amber-text)',bc:'var(--bay-amber-border)'},
+    {key:'departed',  bg:'var(--bay-green)',  tc:'var(--bay-green-text)',bc:'var(--bay-green-border)'},
+    {key:'delayed',   bg:'var(--bay-red)',    tc:'var(--bay-red-text)',  bc:'var(--bay-red-border)'},
+  ];
+  document.getElementById('summary-bar').innerHTML=defs.map(d=>`
+    <div class="summary-pill" style="background:${d.bg};color:${d.tc};border-color:${d.bc}">
+      <span class="pill-num">${counts[d.key]}</span>
+      <span>${STATUS_LABEL[d.key]}</span>
+    </div>`).join('');
+}
+
+/* -- Card -- */
+function timeStampBtn(id, field, label){
+  const val = loadTime(id, field);
+  const stamped = val ? 'stamped' : '';
+  const display = val || label;
+  return `<div class="time-input-wrap">
+    <span class="time-label">${label}</span>
+    <button class="time-stamp-btn ${stamped}" data-id="${id}" data-field="${field}" onclick="handleStamp(this)" title="${val ? 'Click to clear' : 'Click to stamp current time'}">
+      <span class="time-stamp-dot"></span>${display}
+    </button>
+  </div>`;
+}
+
+function buildCard(row, dayIndex){
+  const status=getStatusForRow(row);
+  const timeDue=row.time_due||'';
+  const vehicleSize=row.vehicle_size||'';
+  const id=row.loading_id||'-';
+  const isLate=row._isLate||false;
+  const isSpecial=row.special||false;
+  const haulier=isSpecial?(row.haulier||'Special delivery'):'LTS';
+  const specialClass=isSpecial?' special-delivery':'';
+  const lateClass=isLate?' card-late':'';
+  return `
+  <div class="loading-card${specialClass}${lateClass}">
+    <button class="card-delete-btn" onclick="deleteSlot('${id}',${isSpecial})" title="Remove this slot">&#215;</button>
+    <div class="card-id-col">
+      <span class="card-id-label">${isSpecial?'Special':'Load No.'}</span>
+      <span class="card-id-value" style="font-size:${isSpecial?'13px':'18px'}">${isSpecial?'SD':dayIndex}</span>
+    </div>
+    <div class="card-body">
+      <span class="card-haulier">${haulier}</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="card-po">Load ID: ${id}${vehicleSize?' &nbsp;·&nbsp; '+vehicleSize:''}</span>
+        ${row.flag?`<span class="flag-badge ${row.flag.startsWith('stand')?'flag-stand':row.flag==='transfer'?'flag-transfer':row.flag==='preload'?'flag-preload':'flag-split'}" style="font-size:13px;padding:4px 10px;"><span class="flag-icon">&#9888;</span> ${row.flag}</span>`:''}
+        ${isSpecial?`<span class="flag-badge" style="font-size:13px;padding:4px 10px;background:#EEEDFE;color:#3C3489;border:1px solid #534AB7;animation:flagpulse 1.8s ease-in-out infinite;">&#9733; Special</span>`:''}
+        ${row.delayed?`<span class="flag-badge flag-stand" style="font-size:13px;padding:4px 10px;animation:flagpulse 1.8s ease-in-out infinite;"><span class="flag-icon">&#9888;</span> Delayed</span>`:''}
+      </div>
+      ${row.delayed?`<div class="eta-wrap">
+        <span class="eta-label">New ETA</span>
+        <button class="eta-btn ${loadTime(id,'eta')?'stamped':''}" data-id="${id}" onclick="handleETA(this)">
+          <span class="time-stamp-dot" style="background:#E24B4A;"></span>${loadTime(id,'eta')?'ETA: '+loadTime(id,'eta'):'Set ETA'}
+        </button>
+      </div>`:''}
+      <div class="card-times">
+        <div class="time-item">
+          <span class="time-label">Due</span>
+          <span class="time-value ${!timeDue?'empty':''}">${timeDue||'-'}</span>
+        </div>
+        ${timeStampBtn(id,'arrival','Arrival')}
+        ${timeStampBtn(id,'in','Time In')}
+        ${timeStampBtn(id,'out','Time Out')}
+      </div>
+    </div>
+    <div class="card-status-col">
+      <span class="status-badge ${STATUS_CLASS[status]}">${STATUS_LABEL[status]}</span>
+    </div>
+  </div>`;
+}
+
+/* -- Graphs -- */
+function destroyCharts(){
+  Object.values(chartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+  chartInstances={};
+}
+
+function getAllDates(){
+  return [...new Set(allRows.map(r=>parseSheetDate(r.date)).filter(Boolean))].sort();
+}
+
+function calcDurationMins(row){
+  const id=row.loading_id||'';
+  const parseT=s=>{
+    if(!s) return null;
+    const p=s.match(/(\d{1,2}):(\d{2})/);
+    return p?+p[1]*60+ +p[2]:null;
+  };
+  const due=parseT(row.time_due);
+  const arr=parseT(loadTime(id,'arrival'));
+  const out=parseT(loadTime(id,'out'));
+  if(out===null) return null;
+  const start=[due,arr].filter(v=>v!==null).reduce((a,b)=>a>b?a:b,null);
+  if(start===null) return null;
+  const dur=out-start;
+  return dur>0?dur:null;
+}
+
+function calcLateForDate(dateKey){
+  let late=0,ontime=0;
+  rowsForDate(dateKey).forEach(r=>{
+    const id=r.loading_id||'';
+    const parseT=s=>{if(!s)return null;const p=s.match(/(\d{1,2}):(\d{2})/);return p?+p[1]*60+ +p[2]:null;};
+    const start=[r.time_due,loadTime(id,'in'),loadTime(id,'arrival')].map(parseT).filter(v=>v!==null).reduce((a,b)=>a>b?a:b,null);
+    if(start===null) return;
+    const out=parseT(loadTime(id,'out'));
+    if(out===null) return;
+    (out-start>60?late++:ontime++);
+  });
+  return {late,ontime};
+}
+
+let graphWeekOffset=0;
+
+function getGraphWeekDates(offset){
+  const now=new Date(), day=now.getDay();
+  const mon=new Date(now);
+  mon.setDate(now.getDate()-((day+6)%7)+offset*7);
+  const days=[];
+  for(let i=0;i<5;i++){
+    const d=new Date(mon);
+    d.setDate(mon.getDate()+i);
+    days.push(fmtDateKey(d));
+  }
+  return days;
+}
+
+function getGraphWeekLabel(offset){
+  const now=new Date(), day=now.getDay();
+  const mon=new Date(now);
+  mon.setDate(now.getDate()-((day+6)%7)+offset*7);
+  const fri=new Date(mon); fri.setDate(mon.getDate()+4);
+  return fmtDate(mon)+' - '+fmtDate(fri);
+}
+
+function changeGraphWeek(dir){
+  graphWeekOffset+=dir;
+  renderGraphs(document.getElementById('main-content'));
+}
+
+function renderGraphs(main){
+  destroyCharts();
+  const weekDates=getGraphWeekDates(graphWeekOffset);
+  const allDatesInData=getAllDates();
+
+  // Filter to only dates that exist in data for this week
+  const dates=weekDates.filter(d=>allDatesInData.includes(d));
+  const labels=weekDates.map(d=>fmtDateShort(d));
+  const vehiclesPerDay=weekDates.map(d=>rowsForDate(d).length);
+  const lateData=weekDates.map(d=>calcLateForDate(d).late);
+  const ontimeData=weekDates.map(d=>calcLateForDate(d).ontime);
+  const avgDur=weekDates.map(d=>{
+    const durs=rowsForDate(d).map(calcDurationMins).filter(v=>v!==null);
+    return durs.length?Math.round(durs.reduce((a,b)=>a+b,0)/durs.length):null;
+  });
+
+  const hasData=vehiclesPerDay.some(v=>v>0);
+
+  main.innerHTML=`
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button onclick="changeGraphWeek(-1)" style="width:32px;height:32px;border:1px solid #ddd;background:#fff;border-radius:6px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#8249;</button>
+      <span style="font-size:14px;font-weight:600;min-width:160px;text-align:center;">${getGraphWeekLabel(graphWeekOffset)}</span>
+      <button onclick="changeGraphWeek(1)" style="width:32px;height:32px;border:1px solid #ddd;background:#fff;border-radius:6px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#8250;</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:12px;color:#888;">${graphWeekOffset===0?'Current week':graphWeekOffset<0?Math.abs(graphWeekOffset)+' week'+(Math.abs(graphWeekOffset)>1?'s':'')+' ago':graphWeekOffset+' week'+(graphWeekOffset>1?'s':'')+' ahead'}</span>
+      <button onclick="printGraphs()" style="padding:6px 14px;background:#1a1a18;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">&#128438; Print / PDF</button>
+    </div>
+  </div>
+  ${!hasData?'<p style="color:#bbb;font-size:14px;padding:24px 0">No data for this week.</p>':`
+  <div style="display:flex;flex-direction:column;gap:24px;">
+    <div style="background:#fff;border:1px solid #e0ddd4;border-radius:8px;padding:20px 24px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#888;font-weight:600;margin-bottom:8px;">Vehicles per day</div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:#555;">
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:22px;height:2px;background:#378ADD;display:inline-block;"></span>Vehicles</span>
+      </div>
+      <div style="position:relative;height:220px;"><canvas id="chart-vehicles"></canvas></div>
+    </div>
+    <div style="background:#fff;border:1px solid #e0ddd4;border-radius:8px;padding:20px 24px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#888;font-weight:600;margin-bottom:8px;">On-time vs late per day</div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:#555;">
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#C0DD97;display:inline-block;"></span>On time</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(226,75,74,0.2);border:1px solid #E24B4A;display:inline-block;"></span>Late</span>
+      </div>
+      <div style="position:relative;height:240px;"><canvas id="chart-late"></canvas></div>
+    </div>
+    <div style="background:#fff;border:1px solid #e0ddd4;border-radius:8px;padding:20px 24px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#888;font-weight:600;margin-bottom:8px;">Average loading duration (minutes)</div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:#555;">
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:22px;height:2px;background:#BA7517;display:inline-block;"></span>Avg duration</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:22px;height:0;border-top:2px dashed #E24B4A;display:inline-block;"></span>60 min target</span>
+      </div>
+      <div style="position:relative;height:240px;"><canvas id="chart-duration"></canvas></div>
+    </div>
+  </div>`}`;
+
+  if(!hasData) return;
+  if(!window.Chart){setTimeout(()=>buildCharts(labels,vehiclesPerDay,lateData,ontimeData,avgDur,weekDates),400);return;}
+  buildCharts(labels,vehiclesPerDay,lateData,ontimeData,avgDur,weekDates);
+}
+
+function printGraphs(){
+  const weekLabel=getGraphWeekLabel(graphWeekOffset);
+  const charts=['chart-vehicles','chart-late','chart-duration'];
+  const titles=['Vehicles per day','On-time vs late per day','Average loading duration (minutes)'];
+  let html=`<html><head><title>Loading Report - ${weekLabel}</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:24px;color:#1a1a18;}
+    h1{font-size:18px;margin-bottom:4px;}
+    h2{font-size:13px;color:#888;font-weight:normal;margin-bottom:24px;}
+    .chart-section{margin-bottom:32px;}
+    .chart-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#555;margin-bottom:12px;}
+    img{width:100%;max-width:800px;border:1px solid #e0ddd4;border-radius:6px;}
+    @media print{body{padding:0;} img{max-width:100%;}}
+  </style></head><body>
+  <h1>Staircraft Group — Vehicle Loading Report</h1>
+  <h2>Week: ${weekLabel}</h2>`;
+
+  charts.forEach((id,i)=>{
+    const canvas=document.getElementById(id);
+    if(canvas){
+      const img=canvas.toDataURL('image/png');
+      html+=`<div class="chart-section"><div class="chart-title">${titles[i]}</div><img src="${img}"/></div>`;
+    }
+  });
+
+  html+=`</body></html>`;
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+}
+
+function buildCharts(labels,vehiclesPerDay,lateData,ontimeData,avgDur,dates){
+  chartInstances.vehicles=new Chart(document.getElementById('chart-vehicles'),{
+    type:'line',
+    data:{labels,datasets:[{label:'Vehicles',data:vehiclesPerDay,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#378ADD',fill:true,tension:0.3,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f0ede6'},ticks:{color:'#888',font:{size:11},maxRotation:45,autoSkip:false}},y:{grid:{color:'#f0ede6'},ticks:{color:'#888',font:{size:11}},beginAtZero:true,precision:0}}}
+  });
+  chartInstances.late=new Chart(document.getElementById('chart-late'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'On time',data:ontimeData,backgroundColor:'#C0DD97',borderColor:'#639922',borderWidth:1.5,borderRadius:3},{label:'Late',data:lateData,backgroundColor:'rgba(226,75,74,0.2)',borderColor:'#E24B4A',borderWidth:1.5,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{grid:{display:false},ticks:{color:'#888',font:{size:11},maxRotation:45,autoSkip:false}},y:{grid:{color:'#f0ede6'},ticks:{color:'#888',font:{size:11}},beginAtZero:true,precision:0}}}
+  });
+  const maxDur=Math.max(...avgDur.filter(v=>v!==null),60)+20;
+  chartInstances.duration=new Chart(document.getElementById('chart-duration'),{
+    type:'line',
+    data:{labels,datasets:[{label:'Avg duration',data:avgDur,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#BA7517',fill:true,spanGaps:true,tension:0.3},{label:'60 min target',data:dates.map(()=>60),borderColor:'#E24B4A',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+' min'}}},scales:{x:{grid:{color:'#f0ede6'},ticks:{color:'#888',font:{size:11},maxRotation:45,autoSkip:false}},y:{grid:{color:'#f0ede6'},ticks:{color:'#888',font:{size:11},callback:v=>v+'m'},beginAtZero:true,max:maxDur}}}
+  });
+}
+
+/* -- Render -- */
+function render(){
+  const main=document.getElementById('main-content');
+  updateWeekLabel();
+  if(currentView==='graphs'){renderGraphs(main);return;}
+  if(currentView==='today'){
+    const viewDate=getViewDate();
+    const dateKey=fmtDateKey(viewDate);
+    const rows=rowsForDate(dateKey);
+    buildSummary(rows);
+    if(!rows.length){main.innerHTML='<p style="color:#bbb;font-size:14px;padding:24px 0">No loading entries found for '+fmtDate(viewDate)+'.</p>';return;}
+    const {lateIds}=calcLateLoading(rows);
+    const numbered=rows.map((r,i)=>({...r,_loadNum:i+1,_isLate:lateIds.has(r.loading_id||'')}));
+    const sorted=[...numbered].sort((a,b)=>(a.time_due||'99:99').localeCompare(b.time_due||'99:99'));
+    main.innerHTML='<div class="day-grid">'+sorted.map(r=>buildCard(r,r._loadNum)).join('')+'</div>';
+  } else {
+    const {mon,fri}=getWeekRange(weekOffset);
+    const today=fmtDateKey(new Date());
+    const days=[];
+    const start=weekOffset===0?new Date():new Date(mon);
+    const end=new Date(fri);
+    for(let d=new Date(start);fmtDateKey(d)<=fmtDateKey(end);d.setDate(d.getDate()+1)){
+      days.push(new Date(d));
+    }
+    const weekRows=days.flatMap(d=>rowsForDate(fmtDateKey(d)));
+    buildSummary(weekRows);
+    main.innerHTML=days.map(d=>{
+      const key=fmtDateKey(d);
+      const rows=rowsForDate(key);
+      const isT=key===today;
+      return `<div class="day-section">
+        <div class="day-section-header">
+          <span class="day-name" style="${isT?'color:#1a1a18':''}">${d.toLocaleDateString('en-GB',{weekday:'long'})}</span>
+          <span class="day-date">${fmtDate(d)}${isT?' · Today':''}</span>
+          <span class="day-count">${rows.length}</span>
+          <div class="day-divider"></div>
+        </div>
+        ${!rows.length?'<p class="empty-day">No entries</p>':(()=>{const {lateIds}=calcLateLoading(rows);return '<div class="day-grid">'+rows.map((r,i)=>({...r,_loadNum:i+1,_isLate:lateIds.has(r.loading_id||'')})).sort((a,b)=>(a.time_due||'99:99').localeCompare(b.time_due||'99:99')).map(r=>buildCard(r,r._loadNum)).join('')+'</div>';})()}
+      </div>`;
+    }).join('');
+  }
+}
+
+/* -- Demo data -- */
+function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return fmtDateKey(d);}
+
+function daysAhead(n){const d=new Date();d.setDate(d.getDate()+n);return fmtDateKey(d);}
+
+function loadDemo(){
+  const now=new Date();
+  const dow=now.getDay();
+  const mon=new Date(now);
+  mon.setDate(now.getDate()-((dow+6)%7));
+
+  function weekDay(weekOffset,dayIndex){
+    const d=new Date(mon);
+    d.setDate(mon.getDate()+weekOffset*7+dayIndex);
+    return fmtDateKey(d);
+  }
+
+  const m0=weekDay(0,0), t0=weekDay(0,1), w0=weekDay(0,2), th0=weekDay(0,3), f0=weekDay(0,4);
+  const m1=weekDay(1,0), t1=weekDay(1,1), w1=weekDay(1,2), th1=weekDay(1,3), f1=weekDay(1,4);
+
+  allRows=[
+    {loading_id:'114211',date:m0,vehicle_size:'Artic',time_due:'06:30',status:'booked',flag:'transfer'},
+    {loading_id:'114215',date:m0,vehicle_size:'Artic',time_due:'08:00',status:'booked',flag:''},
+    {loading_id:'114213',date:m0,vehicle_size:'18t',  time_due:'09:30',status:'booked',flag:'transfer'},
+    {loading_id:'114214',date:m0,vehicle_size:'18t',  time_due:'10:30',status:'booked',flag:''},
+    {loading_id:'114454',date:m0,vehicle_size:'18t',  time_due:'11:30',status:'booked',flag:''},
+
+    {loading_id:'114232',date:t0,vehicle_size:'Artic',time_due:'14:30',status:'booked',flag:'transfer'},
+    {loading_id:'114233',date:t0,vehicle_size:'Artic',time_due:'06:00',status:'booked',flag:''},
+    {loading_id:'114234',date:t0,vehicle_size:'Artic',time_due:'11:00',status:'booked',flag:''},
+    {loading_id:'114223',date:t0,vehicle_size:'18t',  time_due:'07:00',status:'booked',flag:'transfer'},
+    {loading_id:'114224',date:t0,vehicle_size:'18t',  time_due:'08:00',status:'booked',flag:''},
+    {loading_id:'114225',date:t0,vehicle_size:'18t',  time_due:'09:00',status:'booked',flag:''},
+    {loading_id:'114239',date:t0,vehicle_size:'Artic',time_due:'06:00',status:'booked',flag:''},
+
+    {loading_id:'114235',date:w0,vehicle_size:'Artic',time_due:'07:30',status:'booked',flag:''},
+    {loading_id:'114231',date:w0,vehicle_size:'Artic',time_due:'08:30',status:'booked',flag:''},
+    {loading_id:'114226',date:w0,vehicle_size:'18t',  time_due:'07:30',status:'booked',flag:''},
+    {loading_id:'114227',date:w0,vehicle_size:'18t',  time_due:'08:30',status:'booked',flag:''},
+    {loading_id:'114228',date:w0,vehicle_size:'18t',  time_due:'09:30',status:'booked',flag:''},
+
+    {loading_id:'114240',date:th0,vehicle_size:'Artic',time_due:'06:30',status:'booked',flag:''},
+    {loading_id:'114241',date:th0,vehicle_size:'Artic',time_due:'10:00',status:'booked',flag:''},
+    {loading_id:'114242',date:th0,vehicle_size:'18t',  time_due:'13:30',status:'booked',flag:''},
+    {loading_id:'114680',date:th0,vehicle_size:'Artic',time_due:'06:00',status:'booked',flag:''},
+    {loading_id:'114238',date:th0,vehicle_size:'18t',  time_due:'07:00',status:'booked',flag:''},
+    {loading_id:'114230',date:th0,vehicle_size:'18t',  time_due:'08:00',status:'booked',flag:''},
+    {loading_id:'114229',date:th0,vehicle_size:'18t',  time_due:'09:00',status:'booked',flag:'',delayed:true},
+    {loading_id:'114237',date:th0,vehicle_size:'18t',  time_due:'10:00',status:'booked',flag:'stand 7'},
+
+    {loading_id:'114363',date:f0,vehicle_size:'18t',  time_due:'',     status:'not_booked',flag:''},
+    {loading_id:'114244',date:f0,vehicle_size:'18t',  time_due:'',     status:'not_booked',flag:''},
+    {loading_id:'114682',date:f0,vehicle_size:'18t',  time_due:'',     status:'not_booked',flag:''},
+    {loading_id:'114681',date:f0,vehicle_size:'18t',  time_due:'',     status:'not_booked',flag:''},
+
+    {loading_id:'114536',date:m1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:'transfer'},
+    {loading_id:'114537',date:m1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:'transfer'},
+    {loading_id:'114538',date:m1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114685',date:m1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:'transfer'},
+    {loading_id:'114559',date:m1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+
+    {loading_id:'114540',date:t1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:'transfer'},
+    {loading_id:'114549',date:t1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114550',date:t1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114539',date:t1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:'transfer'},
+    {loading_id:'114541',date:t1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114542',date:t1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+
+    {loading_id:'114551',date:w1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114553',date:w1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114555',date:w1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114543',date:w1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114545',date:w1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114547',date:w1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114656',date:w1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+
+    {loading_id:'114556',date:th1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114557',date:th1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114558',date:th1,vehicle_size:'Artic',time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114554',date:th1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114522',date:th1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114560',date:th1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114654',date:th1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+
+    {loading_id:'114548',date:f1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114546',date:f1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114655',date:f1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+    {loading_id:'114602',date:f1,vehicle_size:'18t',  time_due:'',status:'not_booked',flag:''},
+  ];
+
+  const demoTimes={
+    '114211':{arrival:'06:25',out:'07:20'},
+    '114215':{arrival:'07:55',out:'09:10'},
+    '114213':{arrival:'09:35',out:'10:25'},
+    '114214':{arrival:'10:35',out:'11:50'},
+    '114454':{arrival:'11:25',out:'13:05'},
+
+    '114232':{arrival:'14:35',out:'16:20'},
+    '114233':{arrival:'06:05',out:'07:00'},
+    '114234':{arrival:'11:05',out:'12:10'},
+    '114223':{arrival:'07:05',out:'08:15'},
+    '114224':{arrival:'08:05',out:'09:20'},
+    '114225':{arrival:'09:05',out:'10:00'},
+    '114239':{arrival:'06:10',out:'07:30'},
+
+    '114235':{arrival:'07:35',out:'08:30'},
+    '114231':{arrival:'08:35',out:'10:15'},
+    '114226':{arrival:'07:35',out:'08:20'},
+    '114227':{arrival:'08:35',out:'09:55'},
+    '114228':{arrival:'09:35',out:'10:30'},
+  };
+  Object.entries(demoTimes).forEach(([id,t])=>{
+    if(t.arrival) localStorage.setItem(`sc_time_${id}_arrival`,t.arrival);
+    if(t.out)     localStorage.setItem(`sc_time_${id}_out`,t.out);
+  });
+
+  render();
+}
+
+/* -- Special deliveries -- */
+const SPECIAL_KEY='sc_special_deliveries';
+
+function loadSpecialDeliveries(){
+  try{ return JSON.parse(localStorage.getItem(SPECIAL_KEY)||'[]'); }catch(e){ return []; }
+}
+function saveSpecialDeliveries(arr){
+  localStorage.setItem(SPECIAL_KEY,JSON.stringify(arr));
+}
+function getSpecialForDate(dateKey){
+  return loadSpecialDeliveries().filter(r=>r.date===dateKey);
+}
+
+const DELETED_SPECIAL_KEY='sc_deleted_special';
+function getDeletedSpecials(){ try{return JSON.parse(localStorage.getItem(DELETED_SPECIAL_KEY)||'[]');}catch(e){return [];} }
+function addDeletedSpecial(id){ const d=getDeletedSpecials(); if(!d.includes(id)){d.push(id);localStorage.setItem(DELETED_SPECIAL_KEY,JSON.stringify(d));} }
+
+function deleteSlot(id, isSpecial){
+  if(!confirm(`Remove load ${id} from the board?`)) return;
+  if(isSpecial){
+    const all=loadSpecialDeliveries().filter(r=>r.loading_id!==id);
+    saveSpecialDeliveries(all);
+    addDeletedSpecial(id);
+  } else {
+    allRows=allRows.filter(r=>r.loading_id!==id);
+  }
+  ['arrival','in','out','eta'].forEach(f=>clearTime(id,f));
+  render();
+}
+
+function openAddModal(){
+  const d=getViewDate();
+  document.getElementById('modal-date').value=fmtDateKey(d);
+  document.getElementById('modal-haulier').value='';
+  document.getElementById('modal-vehicle-size').value='';
+  document.getElementById('modal-due-time').value='';
+  document.getElementById('modal-load-id').value='';
+  document.getElementById('modal-haulier-other-wrap').style.display='none';
+  document.getElementById('add-modal').classList.add('open');
+}
+function closeAddModal(){
+  document.getElementById('add-modal').classList.remove('open');
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAddModal(); });
+
+function submitAddModal(){
+  let haulier=document.getElementById('modal-haulier').value;
+  if(haulier==='Other') haulier=document.getElementById('modal-haulier-other').value.trim();
+  const vehicleSize=document.getElementById('modal-vehicle-size').value;
+  const dueTime=document.getElementById('modal-due-time').value;
+  const loadId=document.getElementById('modal-load-id').value.trim();
+  const date=document.getElementById('modal-date').value;
+
+  if(!haulier){ alert('Please select a haulier.'); return; }
+  if(!vehicleSize){ alert('Please select a vehicle size.'); return; }
+  if(!loadId){ alert('Please enter a Load ID or reference.'); return; }
+  if(!date){ alert('Please select a date.'); return; }
+
+  const entry={
+    loading_id:'SD-'+loadId,
+    date:date,
+    vehicle_size:vehicleSize,
+    time_due:dueTime,
+    status:'booked',
+    flag:'',
+    haulier:haulier,
+    special:true
+  };
+
+  const all=loadSpecialDeliveries();
+  all.push(entry);
+  saveSpecialDeliveries(all);
+  // Sync to sheet
+  fetch(APPS_SCRIPT_URL,{
+    method:'POST',mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      load_id:      entry.loading_id,
+      date:         entry.date,
+      arrival:      '', time_in:'', time_out:'', eta:'',
+      status:       entry.time_due?'booked':'not_booked',
+      timestamp:    new Date().toISOString(),
+      type:         'special',
+      haulier:      entry.haulier,
+      vehicle_size: entry.vehicle_size,
+      time_due:     entry.time_due,
+      flag:         entry.flag||''
+    })
+  }).catch(()=>{});
+  closeAddModal();
+  render();
+}
+function init(){
+  loadDemo();
+  fetchData(SHEET_URL);
+  const haulierSel=document.getElementById('modal-haulier');
+  if(haulierSel) haulierSel.addEventListener('change',function(){
+    document.getElementById('modal-haulier-other-wrap').style.display=this.value==='Other'?'block':'none';
+  });
+  // Pull times from Apps Script immediately then every 15 seconds
+  pullFromSheet();
+  setInterval(()=>pullFromSheet(),15000);
+  setInterval(()=>fetchData(SHEET_URL),60000);
+  setInterval(()=>{if(allRows.length&&currentView!=='graphs')buildSummary(currentView==='today'?rowsForToday():rowsForDate(fmtDateKey(new Date())));},60000);
+  // Pull immediately when tab becomes visible again
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible') pullFromSheet();
+  });
+}
+
+init();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</body>
+</html>
